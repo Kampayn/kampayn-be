@@ -1,5 +1,6 @@
 const Boom = require('@hapi/boom');
 const { User, BrandProfile, InfluencerProfile, sequelize } = require('../db/models');
+const { successResponse } = require('../utils/responseHelper'); // Impor response helper
 
 const getMyProfile = async (request, h) => {
   const userId = request.auth.credentials.user.id; // From JWT
@@ -15,7 +16,9 @@ const getMyProfile = async (request, h) => {
     if (!user) {
       return Boom.notFound('User not found');
     }
-    return h.response(user).code(200);
+    return successResponse(h, {
+      user: user,
+    }, 'Profile retrieved successfully'); // Menggunakan response helper
   } catch (error) {
     console.error('Get profile error:', error);
     return Boom.badImplementation('Failed to retrieve profile');
@@ -40,10 +43,6 @@ const completeProfile = async (request, h) => {
           await t.rollback();
           return Boom.conflict('User role is already set and cannot be changed this way.');
       }
-      if (user.role === role) {
-          // User sudah memiliki role ini, mungkin hanya update data profil
-      }
-
 
       user.role = role;
       await user.save({ transaction: t });
@@ -95,10 +94,9 @@ const completeProfile = async (request, h) => {
           ],
       });
 
-      return h.response({
-          message: 'Profile completed successfully',
+      return successResponse(h, {
           user: updatedUserWithProfile,
-      }).code(200);
+      }, 'Profile completed successfully', 201); // Menggunakan response helper
 
   } catch (error) {
       await t.rollback();
