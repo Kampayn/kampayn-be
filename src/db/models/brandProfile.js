@@ -19,10 +19,6 @@ module.exports = (sequelize, DataTypes) => {
     user_id: {
       type: DataTypes.UUID,
       allowNull: false,
-      references: {
-        model: 'users', // table name
-        key: 'id',
-      },
       onDelete: 'CASCADE',
     },
     company: {

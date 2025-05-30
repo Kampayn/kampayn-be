@@ -1,5 +1,5 @@
 const Boom = require('@hapi/boom');
-const { User, BrandProfile, InfluencerProfile } = require('../db/models');
+const { User, BrandProfile, InfluencerProfile, sequelize } = require('../db/models');
 
 const getMyProfile = async (request, h) => {
   const userId = request.auth.credentials.user.id; // From JWT
@@ -22,6 +22,92 @@ const getMyProfile = async (request, h) => {
   }
 };
 
+const completeProfile = async (request, h) => {
+  const userId = request.auth.credentials.user.id;
+  const { role, category, photo_url, company, instagram_username } = request.payload;
+
+  const t = await sequelize.transaction();
+  try {
+      const user = await User.findByPk(userId, { transaction: t });
+      if (!user) {
+          await t.rollback();
+          return Boom.notFound('User not found');
+      }
+
+      if (user.role && user.role !== role) {
+          // Handle jika user mencoba mengubah role yang sudah ada (jika tidak diizinkan)
+          // Atau handle penghapusan profil lama jika role berubah
+          await t.rollback();
+          return Boom.conflict('User role is already set and cannot be changed this way.');
+      }
+      if (user.role === role) {
+          // User sudah memiliki role ini, mungkin hanya update data profil
+      }
+
+
+      user.role = role;
+      await user.save({ transaction: t });
+
+      if (role === 'brand') {
+          // Buat atau update BrandProfile
+          // Cek apakah profil sudah ada
+          let brandProfile = await BrandProfile.findOne({ where: { user_id: userId }, transaction: t });
+          if (brandProfile) {
+              brandProfile.company = company; // dan field lain
+              brandProfile.category = category;
+              brandProfile.photo_url = photo_url;
+              await brandProfile.save({ transaction: t });
+          } else {
+              brandProfile = await BrandProfile.create({
+                  user_id: userId,
+                  company: company, // dan field lain
+                  category: category,
+                  photo_url: photo_url,
+              }, { transaction: t });
+          }
+      } else if (role === 'influencer') {
+          // Buat atau update InfluencerProfile
+          let influencerProfile = await InfluencerProfile.findOne({ where: { user_id: userId }, transaction: t });
+          if (influencerProfile) {
+              influencerProfile.instagram_username = instagram_username; // dan field lain
+              influencerProfile.categories = Array.isArray(category) ? category : [category];
+              influencerProfile.photo_url = photo_url;
+              // ...
+              await influencerProfile.save({ transaction: t });
+          } else {
+              influencerProfile = await InfluencerProfile.create({
+                  user_id: userId,
+                  instagram_username: instagram_username, // dan field lain
+                  categories: Array.isArray(category)? category : [category],
+                  photo_url: photo_url
+                  // ...
+              }, { transaction: t });
+          }
+      }
+
+      await t.commit();
+
+      // Ambil ulang user dengan profil yang ter-update
+      const updatedUserWithProfile = await User.findByPk(userId, {
+          include: [
+              { model: BrandProfile, as: 'brandProfile' },
+              { model: InfluencerProfile, as: 'influencerProfile' },
+          ],
+      });
+
+      return h.response({
+          message: 'Profile completed successfully',
+          user: updatedUserWithProfile,
+      }).code(200);
+
+  } catch (error) {
+      await t.rollback();
+      console.error('Complete profile error:', error);
+      return Boom.badImplementation('Failed to complete profile');
+  }
+};
+
 module.exports = {
   getMyProfile,
+  completeProfile,
 };
