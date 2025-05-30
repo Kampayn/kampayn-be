@@ -30,7 +30,7 @@ module.exports = {
       },
       role: {
         type: Sequelize.ENUM('brand', 'influencer'),
-        allowNull: false,
+        allowNull: true,
       },
       email_verified_at: {
         type: Sequelize.DATE, // TIMESTAMP
