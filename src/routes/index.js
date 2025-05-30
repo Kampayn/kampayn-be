@@ -12,7 +12,7 @@ module.exports = [
       return { message: 'Welcome to the Kampaiyn API!' };
     },
     options: {
-        auth: false,
-    }
+      auth: false,
+    },
   },
 ];

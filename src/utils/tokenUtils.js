@@ -28,11 +28,16 @@ const parseTimeToSeconds = (timeStr) => {
   const unit = timeStr.slice(-1);
   const value = parseInt(timeStr.slice(0, -1), 10);
   switch (unit) {
-    case 's': return value;
-    case 'm': return value * 60;
-    case 'h': return value * 60 * 60;
-    case 'd': return value * 60 * 60 * 24;
-    default: return 300; // default 5 menit
+    case 's':
+      return value;
+    case 'm':
+      return value * 60;
+    case 'h':
+      return value * 60 * 60;
+    case 'd':
+      return value * 60 * 60 * 24;
+    default:
+      return 300; // default 5 menit
   }
 };
 
@@ -45,7 +50,7 @@ const verifyToken = (token, secret) => {
   try {
     const decoded = Jwt.token.decode(token); // Cek struktur dulu
     if (!decoded || !decoded.decoded || !decoded.decoded.payload) {
-        throw new Error('Invalid token structure');
+      throw new Error('Invalid token structure');
     }
     Jwt.token.verify(decoded, secret); // Verifikasi signature dan expiry
     return { valid: true, expired: false, payload: decoded.decoded.payload };
@@ -57,11 +62,10 @@ const verifyToken = (token, secret) => {
   }
 };
 
-
 module.exports = {
   generateAccessToken,
   generateRefreshToken,
   verifyToken,
   parseTimeToSeconds,
-  getExpiryDate
+  getExpiryDate,
 };

@@ -9,60 +9,65 @@ module.exports = (sequelize, DataTypes) => {
       });
     }
   }
-  InfluencerProfile.init({
-    id: {
-      type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,
-      primaryKey: true,
-      allowNull: false,
+  InfluencerProfile.init(
+    {
+      id: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        primaryKey: true,
+        allowNull: false,
+      },
+      user_id: {
+        type: DataTypes.UUID,
+        allowNull: false,
+        onDelete: 'CASCADE',
+      },
+      instagram_username: {
+        type: DataTypes.STRING(100),
+        allowNull: true,
+      },
+      photo_url: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+      },
+      categories: {
+        // Array of strings
+        type: DataTypes.ARRAY(DataTypes.TEXT),
+        allowNull: true,
+      },
+      follower_tier: {
+        type: DataTypes.ENUM('nano', 'micro', 'macro', 'mega'),
+        allowNull: true,
+      },
+      portfolio_url: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+      },
+      instagram_followers: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+      },
+      instagram_avg_likes: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+      },
+      instagram_avg_comments: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+      },
+      instagram_engagement_rate: {
+        // e.g., 0.025 for 2.5%
+        type: DataTypes.FLOAT,
+        allowNull: true,
+      },
     },
-    user_id: {
-      type: DataTypes.UUID,
-      allowNull: false,
-      onDelete: 'CASCADE',
-    },
-    instagram_username: {
-      type: DataTypes.STRING(100),
-      allowNull: true,
-    },
-    photo_url: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-    },
-    categories: { // Array of strings
-      type: DataTypes.ARRAY(DataTypes.TEXT),
-      allowNull: true,
-    },
-    follower_tier: {
-      type: DataTypes.ENUM('nano', 'micro', 'macro', 'mega'),
-      allowNull: true,
-    },
-    portfolio_url: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-    },
-    instagram_followers: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-    },
-    instagram_avg_likes: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-    },
-    instagram_avg_comments: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-    },
-    instagram_engagement_rate: { // e.g., 0.025 for 2.5%
-      type: DataTypes.FLOAT,
-      allowNull: true,
-    },
-  }, {
-    sequelize,
-    modelName: 'InfluencerProfile',
-    tableName: 'influencer_profiles',
-    timestamps: true,
-    underscored: true, // Use snake_case for timestamps (created_at, updated_at)
-  });
+    {
+      sequelize,
+      modelName: 'InfluencerProfile',
+      tableName: 'influencer_profiles',
+      timestamps: true,
+      underscored: true, // Use snake_case for timestamps (created_at, updated_at)
+    }
+  );
   return InfluencerProfile;
 };

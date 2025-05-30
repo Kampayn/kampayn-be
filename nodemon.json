@@ -1,10 +1,6 @@
 {
-    "watch": [
-        "src"
-    ],
-    "ext": "js,json",
-    "ignore": [
-        "src/**/*.test.js"
-    ],
-    "exec": "node --inspect src/app.js"
+  "watch": ["src"],
+  "ext": "js,json",
+  "ignore": ["src/**/*.test.js"],
+  "exec": "node --inspect src/app.js"
 }

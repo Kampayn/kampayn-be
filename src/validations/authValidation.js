@@ -12,7 +12,7 @@ const loginPayload = Joi.object({
 });
 
 const refreshTokenPayload = Joi.object({
-    refreshToken: Joi.string().required(),
+  refreshToken: Joi.string().required(),
 });
 
 module.exports = {

@@ -9,36 +9,39 @@ module.exports = (sequelize, DataTypes) => {
       });
     }
   }
-  BrandProfile.init({
-    id: {
-      type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,
-      primaryKey: true,
-      allowNull: false,
+  BrandProfile.init(
+    {
+      id: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        primaryKey: true,
+        allowNull: false,
+      },
+      user_id: {
+        type: DataTypes.UUID,
+        allowNull: false,
+        onDelete: 'CASCADE',
+      },
+      company: {
+        type: DataTypes.STRING, // VARCHAR(255)
+        allowNull: false,
+      },
+      photo_url: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+      },
+      category: {
+        type: DataTypes.STRING(100), // VARCHAR(100)
+        allowNull: true,
+      },
     },
-    user_id: {
-      type: DataTypes.UUID,
-      allowNull: false,
-      onDelete: 'CASCADE',
-    },
-    company: {
-      type: DataTypes.STRING, // VARCHAR(255)
-      allowNull: false,
-    },
-    photo_url: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-    },
-    category: {
-      type: DataTypes.STRING(100), // VARCHAR(100)
-      allowNull: true,
-    },
-  }, {
-    sequelize,
-    modelName: 'BrandProfile',
-    tableName: 'brand_profiles',
-    timestamps: true,
-    underscored: true, // Use snake_case for timestamps (created_at, updated_at)
-  });
+    {
+      sequelize,
+      modelName: 'BrandProfile',
+      tableName: 'brand_profiles',
+      timestamps: true,
+      underscored: true, // Use snake_case for timestamps (created_at, updated_at)
+    }
+  );
   return BrandProfile;
 };

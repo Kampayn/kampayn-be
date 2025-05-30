@@ -29,7 +29,8 @@ module.exports = {
         type: Sequelize.DATE, // TIMESTAMP
         allowNull: false,
       },
-      issued_at: { // Sequelize akan handle ini jika kita set default value
+      issued_at: {
+        // Sequelize akan handle ini jika kita set default value
         type: Sequelize.DATE,
         allowNull: false,
         defaultValue: Sequelize.NOW,
@@ -51,12 +52,14 @@ module.exports = {
         type: Sequelize.STRING(255),
         allowNull: true,
       },
-      created_at: { // Kolom standar Sequelize
+      created_at: {
+        // Kolom standar Sequelize
         allowNull: false,
         type: Sequelize.DATE,
         defaultValue: Sequelize.NOW,
       },
-      updated_at: { // Kolom standar Sequelize
+      updated_at: {
+        // Kolom standar Sequelize
         allowNull: false,
         type: Sequelize.DATE,
         defaultValue: Sequelize.NOW,
@@ -65,5 +68,5 @@ module.exports = {
   },
   async down(queryInterface, Sequelize) {
     await queryInterface.dropTable('refresh_tokens');
-  }
+  },
 };

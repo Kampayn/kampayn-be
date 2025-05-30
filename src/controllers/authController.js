@@ -72,14 +72,17 @@ const login = async (request, h) => {
     const newRefreshToken = generateRefreshToken({ id: user.id }); // Refresh token might only need user ID
 
     // Simpan refresh token ke database
-    await RefreshToken.create({
-      user_id: user.id,
-      token: newRefreshToken,
-      expires_at: getExpiryDate(refreshTokenTtl),
-      ip_address: request.info.remoteAddress,
-      user_agent: request.headers['user-agent'] || null,
-      // device_info bisa diisi jika ada logic untuk mendeteksinya
-    }, { transaction: t });
+    await RefreshToken.create(
+      {
+        user_id: user.id,
+        token: newRefreshToken,
+        expires_at: getExpiryDate(refreshTokenTtl),
+        ip_address: request.info.remoteAddress,
+        user_agent: request.headers['user-agent'] || null,
+        // device_info bisa diisi jika ada logic untuk mendeteksinya
+      },
+      { transaction: t }
+    );
 
     await t.commit(); // Commit transaksi
 
@@ -93,11 +96,15 @@ const login = async (request, h) => {
       updated_at: user.updated_at,
     };
 
-    return successResponse(h, {
-      user: userResponse,
-      accessToken: accessToken,
-      refreshToken: newRefreshToken,
-    }, 'Login successful');
+    return successResponse(
+      h,
+      {
+        user: userResponse,
+        accessToken: accessToken,
+        refreshToken: newRefreshToken,
+      },
+      'Login successful'
+    );
   } catch (error) {
     console.error('Login error:', error);
     return Boom.badImplementation('Login failed');
@@ -138,12 +145,15 @@ const refreshToken = async (request, h) => {
     }
 
     const user = refreshTokenInstance.user;
-    if (!user || user.deleted_at) { // Cek apakah user masih ada / aktif
+    if (!user || user.deleted_at) {
+      // Cek apakah user masih ada / aktif
       // Tandai token sebagai tidak valid jika user tidak valid
       refreshTokenInstance.is_valid = false;
       await refreshTokenInstance.save({ transaction: t });
       await t.commit();
-      return Boom.unauthorized('User associated with token not found or inactive');
+      return Boom.unauthorized(
+        'User associated with token not found or inactive'
+      );
     }
 
     // (Opsional) Implementasi deteksi penggunaan ulang token yang sudah dirotasi
@@ -160,21 +170,27 @@ const refreshToken = async (request, h) => {
 
     // Buat refresh token baru (rotasi token)
     const newRefreshTokenString = generateRefreshToken({ id: user.id });
-    await RefreshToken.create({
-      user_id: user.id,
-      token: newRefreshTokenString,
-      expires_at: getExpiryDate(refreshTokenTtl),
-      ip_address: request.info.remoteAddress,
-      user_agent: request.headers['user-agent'] || null,
-    }, { transaction: t });
+    await RefreshToken.create(
+      {
+        user_id: user.id,
+        token: newRefreshTokenString,
+        expires_at: getExpiryDate(refreshTokenTtl),
+        ip_address: request.info.remoteAddress,
+        user_agent: request.headers['user-agent'] || null,
+      },
+      { transaction: t }
+    );
 
     await t.commit(); // Commit transaksi
 
-    return successResponse(h, {
-      accessToken: newAccessToken,
-      refreshToken: newRefreshTokenString,
-    }, 'Tokens refreshed successfully');
-
+    return successResponse(
+      h,
+      {
+        accessToken: newAccessToken,
+        refreshToken: newRefreshTokenString,
+      },
+      'Tokens refreshed successfully'
+    );
   } catch (error) {
     await t.rollback(); // Rollback jika ada error
     console.error('Refresh token error:', error);
