@@ -1,12 +1,14 @@
 const Boom = require('@hapi/boom');
-const { User, sequelize } = require('../db/models');
+const { User, RefreshToken, sequelize } = require('../db/models'); // Tambahkan RefreshToken
 const { comparePassword } = require('../utils/passwordUtils');
 const {
   generateAccessToken,
   generateRefreshToken,
   verifyToken,
+  getExpiryDate, // Impor helper baru
 } = require('../utils/tokenUtils');
-const { refreshTokenSecret } = require('../config/jwt');
+const { refreshTokenSecret, refreshTokenTtl } = require('../config/jwt'); // Impor refreshTokenTtl
+const { successResponse } = require('../utils/responseHelper'); // Impor response helper
 
 const register = async (request, h) => {
   const { name, email, password } = request.payload;
@@ -23,12 +25,12 @@ const register = async (request, h) => {
       password_hash: password, // Pass plain password to be hashed by hook
     });
 
-    return h
-      .response({
-        message: 'User registered successfully',
-        user: newUser,
-      })
-      .code(201);
+    return successResponse(
+      h,
+      { user: newUser }, // newUser sudah menghormati defaultScope
+      'User registered successfully. Please complete your profile to set a role.',
+      201
+    );
   } catch (error) {
     console.error('Registration error:', error);
     return Boom.badImplementation('Failed to register user');
@@ -37,8 +39,13 @@ const register = async (request, h) => {
 
 const login = async (request, h) => {
   const { email, password } = request.payload;
+  const t = await sequelize.transaction(); // Mulai transaksi
+
   try {
-    const user = await User.scope('withSensitiveInfo').findOne({ where: { email } });
+    const user = await User.scope('withSensitiveInfo').findOne({
+      where: { email },
+      transaction: t,
+    });
     if (!user || !user.password_hash) {
       // Check if user exists and has a password (not Google-only user)
       return Boom.unauthorized('Invalid email or password');
@@ -64,8 +71,17 @@ const login = async (request, h) => {
     const accessToken = generateAccessToken(userPayload);
     const newRefreshToken = generateRefreshToken({ id: user.id }); // Refresh token might only need user ID
 
-    // TODO: Store refresh token securely (e.g., in DB associated with user, or httpOnly cookie)
-    // For now, just returning it.
+    // Simpan refresh token ke database
+    await RefreshToken.create({
+      user_id: user.id,
+      token: newRefreshToken,
+      expires_at: getExpiryDate(refreshTokenTtl),
+      ip_address: request.info.remoteAddress,
+      user_agent: request.headers['user-agent'] || null,
+      // device_info bisa diisi jika ada logic untuk mendeteksinya
+    }, { transaction: t });
+
+    await t.commit(); // Commit transaksi
 
     const userResponse = {
       id: user.id,
@@ -77,14 +93,11 @@ const login = async (request, h) => {
       updated_at: user.updated_at,
     };
 
-    return h
-      .response({
-        message: 'Login successful',
-        user: userResponse,
-        accessToken,
-        refreshToken: newRefreshToken,
-      })
-      .code(200);
+    return successResponse(h, {
+      user: userResponse,
+      accessToken: accessToken,
+      refreshToken: newRefreshToken,
+    }, 'Login successful');
   } catch (error) {
     console.error('Login error:', error);
     return Boom.badImplementation('Login failed');
@@ -93,48 +106,83 @@ const login = async (request, h) => {
 
 const refreshToken = async (request, h) => {
   const { refreshToken: oldRefreshToken } = request.payload;
+  const t = await sequelize.transaction(); // Mulai transaksi
 
   if (!oldRefreshToken) {
     return Boom.badRequest('Refresh token is required');
   }
 
-  const verificationResult = verifyToken(oldRefreshToken, refreshTokenSecret);
+  try {
+    const refreshTokenInstance = await RefreshToken.findOne({
+      where: { token: oldRefreshToken },
+      include: [{ model: User, as: 'user' }], // Sertakan user data
+      transaction: t,
+    });
 
-  if (!verificationResult.valid) {
-    if (verificationResult.expired) {
+    if (!refreshTokenInstance) {
+      await t.rollback();
+      return Boom.unauthorized('Invalid refresh token (not found)');
+    }
+
+    if (!refreshTokenInstance.is_valid) {
+      await t.rollback();
+      return Boom.unauthorized('Refresh token has been invalidated');
+    }
+
+    if (new Date(refreshTokenInstance.expires_at) < new Date()) {
+      // Tandai token lama sebagai tidak valid jika sudah expired
+      refreshTokenInstance.is_valid = false;
+      await refreshTokenInstance.save({ transaction: t });
+      await t.commit();
       return Boom.unauthorized('Refresh token expired');
     }
-    return Boom.unauthorized('Invalid refresh token');
-  }
 
-  const userId = verificationResult.payload.id;
-  const user = await User.findByPk(userId);
+    const user = refreshTokenInstance.user;
+    if (!user || user.deleted_at) { // Cek apakah user masih ada / aktif
+      // Tandai token sebagai tidak valid jika user tidak valid
+      refreshTokenInstance.is_valid = false;
+      await refreshTokenInstance.save({ transaction: t });
+      await t.commit();
+      return Boom.unauthorized('User associated with token not found or inactive');
+    }
 
-  if (!user || user.deleted_at) {
-    return Boom.unauthorized('User not found or inactive');
-  }
+    // (Opsional) Implementasi deteksi penggunaan ulang token yang sudah dirotasi
+    // Jika token ini seharusnya sudah tidak valid karena sudah ada yang baru,
+    // maka ini bisa jadi indikasi penyalahgunaan.
 
-  // TODO: Implement refresh token reuse detection if desired
-  // (e.g., check if this refresh token has been used before)
+    // Invalidate token lama
+    refreshTokenInstance.is_valid = false;
+    await refreshTokenInstance.save({ transaction: t });
 
-  const userPayload = {
-    id: user.id,
-    email: user.email,
-    role: user.role,
-  };
+    // Buat access token baru
+    const userPayload = { id: user.id, email: user.email, role: user.role };
+    const newAccessToken = generateAccessToken(userPayload);
 
-  const newAccessToken = generateAccessToken(userPayload);
-  // Optionally, generate a new refresh token (for rotation)
-  // const newRefreshToken = generateRefreshToken({ id: user.id });
+    // Buat refresh token baru (rotasi token)
+    const newRefreshTokenString = generateRefreshToken({ id: user.id });
+    await RefreshToken.create({
+      user_id: user.id,
+      token: newRefreshTokenString,
+      expires_at: getExpiryDate(refreshTokenTtl),
+      ip_address: request.info.remoteAddress,
+      user_agent: request.headers['user-agent'] || null,
+    }, { transaction: t });
 
-  return h
-    .response({
+    await t.commit(); // Commit transaksi
+
+    return successResponse(h, {
       accessToken: newAccessToken,
-      // refreshToken: newRefreshToken, // if rotating
-    })
-    .code(200);
+      refreshToken: newRefreshTokenString,
+    }, 'Tokens refreshed successfully');
+
+  } catch (error) {
+    await t.rollback(); // Rollback jika ada error
+    console.error('Refresh token error:', error);
+    return Boom.badImplementation('Failed to refresh token');
+  }
 };
 
+// TODO: Implement Google OAuth callback handler
 // Placeholder for Google OAuth - this would be more complex
 const googleLoginCallback = async (request, h) => {
   // This handler would be called by Google after user authentication.

@@ -36,6 +36,11 @@ const parseTimeToSeconds = (timeStr) => {
   }
 };
 
+const getExpiryDate = (ttlString) => {
+  const seconds = parseTimeToSeconds(ttlString);
+  return new Date(Date.now() + seconds * 1000);
+};
+
 const verifyToken = (token, secret) => {
   try {
     const decoded = Jwt.token.decode(token); // Cek struktur dulu
@@ -58,4 +63,5 @@ module.exports = {
   generateRefreshToken,
   verifyToken,
   parseTimeToSeconds,
+  getExpiryDate
 };
