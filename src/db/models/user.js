@@ -53,10 +53,6 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.DATE, // TIMESTAMP
       allowNull: true,
     },
-    deleted_at: { // For soft delete
-      type: DataTypes.DATE,
-      allowNull: true,
-    },
     // Timestamps (createdAt, updatedAt) are added by default by Sequelize
   }, {
     sequelize,
@@ -65,6 +61,16 @@ module.exports = (sequelize, DataTypes) => {
     timestamps: true, // Enable createdAt, updatedAt
     paranoid: true, // Enable soft deletes (uses deleted_at)
     underscored: true, // Use snake_case for timestamps (created_at, updated_at)
+    defaultScope: {
+      attributes: {
+        exclude: ['password_hash', 'google_id', 'deleted_at'],
+      },
+    },
+    scopes: {
+      withSensitiveInfo: { // Scope untuk mengambil semua field jika diperlukan
+        attributes: { include: ['password_hash', 'google_id', 'deleted_at'] },
+      }
+    },
     hooks: {
       async beforeCreate(user) {
         if (user.password_hash) { // Only hash if password is provided
