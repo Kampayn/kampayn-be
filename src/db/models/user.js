@@ -47,7 +47,7 @@ module.exports = (sequelize, DataTypes) => {
     },
     role: {
       type: DataTypes.ENUM('brand', 'influencer'),
-      allowNull: false,
+      allowNull: true,
     },
     email_verified_at: {
       type: DataTypes.DATE, // TIMESTAMP
@@ -63,7 +63,7 @@ module.exports = (sequelize, DataTypes) => {
     underscored: true, // Use snake_case for timestamps (created_at, updated_at)
     defaultScope: {
       attributes: {
-        exclude: ['password_hash', 'google_id', 'deleted_at'],
+        exclude: ['password_hash', 'google_id', 'deleted_at', 'deletedAt'],
       },
     },
     scopes: {
