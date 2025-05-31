@@ -11,6 +11,7 @@
     "db:init": "sequelize init:config && sequelize init:models",
     "db:migrate": "sequelize db:migrate",
     "db:migrate:undo": "sequelize db:migrate:undo",
+    "db:migrate:undo:all": "sequelize db:migrate:undo:all",
     "db:seed:all": "sequelize db:seed:all",
     "db:model:generate": "sequelize model:generate",
     "db:migration:generate": "sequelize migration:generate"
