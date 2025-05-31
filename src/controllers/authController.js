@@ -49,10 +49,21 @@ const register = async (request, h) => {
 };
 
 const login = async (request, h) => {
-  const { email, password } = request.payload;
+  const { email, password, idToken } = request.payload;
   const t = await sequelize.transaction(); // Mulai transaksi
 
   try {
+    const decodedToken = await verifyFirebaseToken(idToken);
+    // Cek apakah pengguna sudah terdaftar dengan Google
+    if (!decodedToken) {
+      return Boom.unauthorized('Invalid or expired ID token');
+    }
+
+    // Cek apakah email sudah verified
+    if (!decodedToken.email_verified) {
+      return Boom.unauthorized('Email not verified');
+    }
+    
     const user = await User.scope('withSensitiveInfo').findOne({
       where: { email },
       transaction: t,
@@ -67,10 +78,9 @@ const login = async (request, h) => {
       return Boom.unauthorized('Invalid email or password');
     }
 
-    if (!user.role) {
-      // return Boom.forbidden('Please complete your profile and set a role to login.');
-      // atau biarkan login, tapi frontend harus menghandle ini.
-      console.warn(`User ${user.email} logged in without a role.`);
+    if (!user.email_verified_at) {
+      user.email_verified_at = new Date();
+      await user.save({ transaction: t });
     }
 
     const userPayload = {
