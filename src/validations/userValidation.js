@@ -6,7 +6,7 @@ const completeProfilePayload = Joi.object({
   category: Joi.alternatives()
     .try(Joi.string(), Joi.array().items(Joi.string()))
     .required(),
-  photo_url: Joi.string().uri().required(),
+  photo_url: Joi.string().uri().optional(),
 
   // Brand specific
   company: Joi.string().when('role', {
@@ -14,13 +14,11 @@ const completeProfilePayload = Joi.object({
     then: Joi.required(),
     otherwise: Joi.optional(),
   }),
-  brand_photo_url: Joi.string()
-    .uri()
-    .when('role', {
-      is: 'brand',
-      then: Joi.optional(),
-      otherwise: Joi.optional(),
-    }),
+  phone_number: Joi.string().when('role', {
+    is: 'brand',
+    then: Joi.required(),
+    otherwise: Joi.optional(),
+  }),
 
   // Influencer specific
   instagram_username: Joi.string().when('role', {
