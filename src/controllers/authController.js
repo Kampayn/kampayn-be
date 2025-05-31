@@ -39,7 +39,7 @@ const register = async (request, h) => {
     return successResponse(
       h,
       { user: userResponse }, // newUser sudah menghormati defaultScope
-      'User registered successfully. Please complete your profile to set a role.',
+      'User registered successfully. Please verify your email.',
       201
     );
   } catch (error) {
