@@ -24,7 +24,7 @@ const init = async () => {
     host: serverConfig.host,
     routes: {
       cors: {
-        origin: ['*'], // Configure for your frontend URL in production
+        origin: ['http://localhost:5173', 'https://kampayn.web.id'], // Configure for your frontend URL in production
       },
       validate: {
         failAction: async (request, h, err) => {
