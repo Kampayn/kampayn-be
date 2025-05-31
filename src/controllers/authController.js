@@ -8,6 +8,7 @@ const {
   getExpiryDate, // Impor helper baru
 } = require('../utils/tokenUtils');
 const { refreshTokenSecret, refreshTokenTtl } = require('../config/jwt'); // Impor refreshTokenTtl
+const { verifyFirebaseToken } = require('../utils/firebase'); // Impor fungsi verifikasi Firebase
 const { successResponse } = require('../utils/responseHelper'); // Impor response helper
 
 const register = async (request, h) => {
@@ -116,6 +117,7 @@ const login = async (request, h) => {
       'Login successful'
     );
   } catch (error) {
+    await t.rollback(); // Rollback jika ada error
     console.error('Login error:', error);
     return Boom.badImplementation('Login failed');
   }
@@ -209,23 +211,76 @@ const refreshToken = async (request, h) => {
 };
 
 // TODO: Implement Google OAuth callback handler
-// Placeholder for Google OAuth - this would be more complex
-const googleLoginCallback = async (request, h) => {
-  // This handler would be called by Google after user authentication.
-  // It would receive an authorization code or tokens from Google.
-  // 1. Exchange code for Google tokens (access, id_token).
-  // 2. Get user profile from Google using id_token or access_token.
-  // 3. Find or create user in your DB based on google_id or email.
-  // 4. Generate your app's access and refresh tokens.
-  // 5. Redirect user or return tokens.
-  return h
-    .response({ message: 'Google OAuth callback placeholder. Implement me!' })
-    .code(200);
+const googleLogin = async (request, h) => {
+  const { idToken } = request.payload;
+  const t = await sequelize.transaction(); // Mulai transaksi
+
+  try {
+    // Decode Google's ID token
+    const decodedToken = await verifyFirebaseToken(idToken);
+    const { uid, email, name } = decodedToken;
+
+    // Cari pengguna berdasarkan email dan google_id
+    let user = await User.findOne({
+      where: { email },
+      transaction: t,
+    });
+
+    // Jika pengguna belum ada, buat baru
+    if (!user) {
+      user = await User.create(
+        {
+          name,
+          email,
+          google_id: uid,
+          email_verified_at: new Date(),
+        },
+        { transaction: t }
+      );
+    }
+    // Jika pengguna sudah ada, tetapi belum memiliki google_id, update dengan google_id
+    else if (!user.google_id) {
+      user.google_id = uid;
+      user.email_verified_at = new Date();
+      await user.save({ transaction: t });
+    }
+    // Generate access and refresh tokens
+    const userPayload = { id: user.id, email: user.email, role: user.role };
+    const accessToken = generateAccessToken(userPayload);
+    const refreshToken = generateRefreshToken({ id: user.id });
+    // Simpan refresh token ke database
+    await RefreshToken.create(
+      {
+        user_id: user.id,
+        token: refreshToken,
+        expires_at: getExpiryDate(refreshTokenTtl),
+        ip_address: request.info.remoteAddress,
+        user_agent: request.headers['user-agent'] || null,
+        // device_info bisa diisi jika ada logic untuk mendeteksinya
+      },
+      { transaction: t }
+    );
+
+    await t.commit(); // Commit transaksi
+    return successResponse(
+      h,
+      {
+        user: user,
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+      },
+      'Google login successful'
+    );
+  } catch (error) {
+    await t.rollback(); // Rollback jika ada error
+    console.error('Google login error:', error);
+    return Boom.badImplementation('Google login failed');
+  }
 };
 
 module.exports = {
   register,
   login,
   refreshToken,
-  googleLoginCallback,
+  googleLogin,
 };

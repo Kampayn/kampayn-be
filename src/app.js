@@ -3,10 +3,20 @@
 require('dotenv').config();
 const Hapi = require('@hapi/hapi');
 const HapiJwt = require('@hapi/jwt');
+const Boom = require('@hapi/boom');
 const serverConfig = require('./config/server');
 const allRoutes = require('./routes');
 const { sequelize } = require('./db/models'); // For DB connection test
 const { registerAuthStrategy } = require('./middlewares/authenticate');
+const { initializeFirebase } = require('./config/firebase');
+
+// Initialize Firebase Admin SDK
+try {
+  initializeFirebase();
+} catch (error) {
+  console.error('Firebase initialization failed:', error.message);
+  process.exit(1);
+}
 
 const init = async () => {
   const server = Hapi.server({
