@@ -25,9 +25,19 @@ const register = async (request, h) => {
       password_hash: password, // Pass plain password to be hashed by hook
     });
 
+    const userResponse = {
+      id: newUser.id,
+      name: newUser.name,
+      email: newUser.email,
+      role: newUser.role,
+      email_verified_at: newUser.email_verified_at,
+      created_at: newUser.created_at,
+      updated_at: newUser.updated_at,
+    };
+
     return successResponse(
       h,
-      { user: newUser }, // newUser sudah menghormati defaultScope
+      { user: userResponse }, // newUser sudah menghormati defaultScope
       'User registered successfully. Please complete your profile to set a role.',
       201
     );

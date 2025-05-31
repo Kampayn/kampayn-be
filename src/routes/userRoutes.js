@@ -4,7 +4,7 @@ const { completeProfilePayload } = require('../validations/userValidation');
 module.exports = [
   {
     method: 'GET',
-    path: '/users/me',
+    path: '/api/v1/users/me',
     handler: userController.getMyProfile,
     options: {
       auth: 'jwt_access', // Requires JWT authentication
@@ -12,7 +12,7 @@ module.exports = [
   },
   {
     method: 'POST', // atau PUT
-    path: '/users/complete-profile',
+    path: '/api/v1/users/complete-profile',
     handler: userController.completeProfile,
     options: {
       auth: 'jwt_access',

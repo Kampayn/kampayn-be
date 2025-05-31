@@ -8,7 +8,7 @@ const {
 module.exports = [
   {
     method: 'POST',
-    path: '/auth/register',
+    path: '/api/v1/auth/register',
     handler: authController.register,
     options: {
       validate: {
@@ -19,7 +19,7 @@ module.exports = [
   },
   {
     method: 'POST',
-    path: '/auth/login',
+    path: '/api/v1/auth/login',
     handler: authController.login,
     options: {
       validate: {
@@ -30,7 +30,7 @@ module.exports = [
   },
   {
     method: 'POST',
-    path: '/auth/refresh-token',
+    path: '/api/v1/auth/refresh-token',
     handler: authController.refreshToken,
     options: {
       validate: {
@@ -42,7 +42,7 @@ module.exports = [
   // Placeholder for Google OAuth routes
   {
     method: 'GET', // Or POST, depending on your OAuth flow start
-    path: '/auth/google',
+    path: '/api/v1/auth/google',
     handler: (request, h) => {
       // Redirect to Google's OAuth consent screen
       // const googleOAuthURL = `https://accounts.google.com/o/oauth2/v2/auth?client_id=YOUR_GOOGLE_CLIENT_ID&redirect_uri=YOUR_REDIRECT_URI&response_type=code&scope=email%20profile`;
@@ -55,7 +55,7 @@ module.exports = [
   },
   {
     method: 'GET', // Or POST
-    path: '/auth/google/callback',
+    path: '/api/v1/auth/google/callback',
     handler: authController.googleLoginCallback,
     options: {
       auth: false,
