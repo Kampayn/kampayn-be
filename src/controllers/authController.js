@@ -78,6 +78,12 @@ const login = async (request, h) => {
       return Boom.unauthorized('Invalid email or password');
     }
 
+    // Cek apakah email pengguna sama dengan email dari token Google
+    if (user.email !== decodedToken.email) {
+      return Boom.unauthorized('Email from token does not match user email');
+    }
+
+    // Cek apakah email sudah diverifikasi
     if (!user.email_verified_at) {
       user.email_verified_at = new Date();
       await user.save({ transaction: t });
@@ -124,7 +130,7 @@ const login = async (request, h) => {
         accessToken: accessToken,
         refreshToken: newRefreshToken,
       },
-      'Login successful'
+      `Welcome back, ${user.name}!`
     );
   } catch (error) {
     await t.rollback(); // Rollback jika ada error
