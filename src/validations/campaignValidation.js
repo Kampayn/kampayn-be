@@ -13,7 +13,7 @@ const createCampaignPayload = Joi.object({
   influencers_needed: Joi.number().integer().min(1).required(),
   budget: Joi.number().positive().precision(2).required(),
   currency: Joi.string().length(3).default('IDR'),
-  payment_method: Joi.string().max(100).required(),
+  payment_method: Joi.string().valid('secure_payment', 'bank_transfer').required(),
   start_date: Joi.date().iso().required(),
   end_date: Joi.date().iso().greater(Joi.ref('start_date')).required(),
   status: Joi.string().valid('draft', 'published', 'pending_review', 'active', 'completed', 'cancelled').default('draft')
