@@ -11,13 +11,27 @@ module.exports = (sequelize, DataTypes) => {
         // onDelete: 'CASCADE' sudah dihandle di level database oleh migrasi
       });
 
-      // TODO: Jika ada tabel junction untuk Campaign dan Influencer (misal: campaign_applications atau campaign_participants)
-      // Campaign.belongsToMany(models.User, {
-      //   through: 'CampaignInfluencer', // Nama tabel junction
-      //   foreignKey: 'campaign_id',
-      //   otherKey: 'influencer_id',
-      //   as: 'participatingInfluencers'
-      // });
+      // Relasi ke InfluencerApplication
+      Campaign.hasMany(models.InfluencerApplication, {
+        foreignKey: 'campaign_id',
+        as: 'applications',
+        onDelete: 'CASCADE',
+      });
+
+      // Relasi ke Task
+      Campaign.hasMany(models.Task, {
+        foreignKey: 'campaign_id',
+        as: 'tasks',
+        onDelete: 'CASCADE',
+      });
+
+      // Relasi many-to-many ke User (Influencer) melalui InfluencerApplication
+      Campaign.belongsToMany(models.User, {
+        through: models.InfluencerApplication,
+        foreignKey: 'campaign_id',
+        otherKey: 'influencer_id',
+        as: 'appliedInfluencers',
+      });
     }
   }
   Campaign.init({

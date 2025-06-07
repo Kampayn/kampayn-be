@@ -15,6 +15,35 @@ module.exports = (sequelize, DataTypes) => {
         as: 'influencerProfile',
         onDelete: 'CASCADE',
       });
+
+      // Relasi ke InfluencerApplication (untuk influencer)
+      User.hasMany(models.InfluencerApplication, {
+        foreignKey: 'influencer_id',
+        as: 'applications',
+        onDelete: 'CASCADE',
+      });
+
+      // Relasi ke Task (untuk influencer)
+      User.hasMany(models.Task, {
+        foreignKey: 'influencer_id',
+        as: 'tasks',
+        onDelete: 'CASCADE',
+      });
+
+      // Relasi ke Campaign (untuk brand)
+      User.hasMany(models.Campaign, {
+        foreignKey: 'user_id',
+        as: 'campaigns',
+        onDelete: 'CASCADE',
+      });
+
+      // Relasi many-to-many ke Campaign melalui InfluencerApplication (untuk influencer)
+      User.belongsToMany(models.Campaign, {
+        through: models.InfluencerApplication,
+        foreignKey: 'influencer_id',
+        otherKey: 'campaign_id',
+        as: 'appliedCampaigns',
+      });
     }
   }
   User.init(
