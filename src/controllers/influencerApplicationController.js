@@ -334,7 +334,7 @@ const getCampaignApplications = async (request, h) => {
     const whereClause = { campaign_id };
     if (status) whereClause.status = status;
 
-    const { count, rows } = await InfluencerApplication.findAndCountAll({
+    const { count, rows: application } = await InfluencerApplication.findAndCountAll({
       where: whereClause,
       include: [
         {
@@ -354,16 +354,34 @@ const getCampaignApplications = async (request, h) => {
       offset: parseInt(offset),
     });
 
-    return successResponse(h, {
-      message: 'Campaign applications retrieved successfully',
-      data: rows,
-      pagination: {
-        current_page: parseInt(page),
-        per_page: parseInt(limit),
-        total: count,
-        total_pages: Math.ceil(count / limit),
+    // return successResponse(h, {
+    //   message: 'Campaign applications retrieved successfully',
+    //   data: rows,
+    //   pagination: {
+    //     current_page: parseInt(page),
+    //     per_page: parseInt(limit),
+    //     total: count,
+    //     total_pages: Math.ceil(count / limit),
+    //   },
+    // });
+
+    const totalPages = Math.ceil(count / limit);
+
+    return successResponse(
+      h,
+      {
+        application,
+        pagination: {
+          current_page: parseInt(page),
+          total_pages: totalPages,
+          total_items: count,
+          items_per_page: parseInt(limit),
+          has_next: page < totalPages,
+          has_prev: page > 1,
+        },
       },
-    });
+      'Campaign applications retrieved successfully'
+    );
   } catch (error) {
     console.error('Error getting campaign applications:', error);
     return Boom.internal('Failed to retrieve campaign applications');
