@@ -3,7 +3,7 @@ const Joi = require('joi');
 
 const createTaskPayload = Joi.object({
   campaign_id: Joi.string().uuid().required(),
-  influencer_id: Joi.string().uuid().required()
+  submission_url: Joi.string().uri().allow(''),
 });
 
 const updateTaskPayload = Joi.object({

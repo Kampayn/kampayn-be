@@ -1,69 +1,85 @@
 'use strict';
 const Boom = require('@hapi/boom');
-const { Task, Campaign, User, InfluencerProfile, InfluencerApplication, sequelize } = require('../db/models');
+const {
+  Task,
+  Campaign,
+  User,
+  InfluencerProfile,
+  InfluencerApplication,
+  sequelize,
+} = require('../db/models');
 const { successResponse } = require('../utils/responseHelper');
 const { Op } = require('sequelize');
 
-// Create Task (Brand only, for accepted influencers)
+// Create Task (Influencer only, for accepted influencers)
 const createTask = async (request, h) => {
   const userId = request.auth.credentials.user.id;
-  const { campaign_id, influencer_id } = request.payload;
+  const { campaign_id, submission_url } = request.payload;
 
   const t = await sequelize.transaction();
   try {
-    // Verify user is a brand
+    // Verify user is a influencer
     const user = await User.findByPk(userId, { transaction: t });
-    if (!user || user.role !== 'brand') {
+    if (!user || user.role !== 'influencer') {
       await t.rollback();
       return Boom.forbidden('Only brands can create tasks');
     }
 
-    // Check if campaign exists and user owns it
+    // Check if campaign exists and is active
     const campaign = await Campaign.findByPk(campaign_id, { transaction: t });
     if (!campaign) {
       await t.rollback();
       return Boom.notFound('Campaign not found');
     }
 
-    if (campaign.user_id !== userId) {
+    if (campaign.status !== 'active') {
       await t.rollback();
-      return Boom.forbidden('You can only create tasks for your own campaigns');
+      return Boom.badRequest('Campaign is not active');
     }
 
     // Check if influencer has accepted application for this campaign
     const application = await InfluencerApplication.findOne({
       where: {
         campaign_id,
-        influencer_id,
-        status: 'accepted'
+        influencer_id: userId,
+        status: 'accepted',
       },
-      transaction: t
+      transaction: t,
     });
 
     if (!application) {
       await t.rollback();
-      return Boom.badRequest('Influencer must have an accepted application for this campaign');
+      return Boom.badRequest(
+        'Influencer must have an accepted application for this campaign'
+      );
     }
 
     // Check if task already exists
     const existingTask = await Task.findOne({
       where: {
         campaign_id,
-        influencer_id
+        influencer_id: userId,
       },
-      transaction: t
+      transaction: t,
     });
 
     if (existingTask) {
       await t.rollback();
-      return Boom.conflict('Task already exists for this influencer and campaign');
+      return Boom.conflict(
+        'Task already exists for this influencer and campaign'
+      );
     }
 
-    const task = await Task.create({
-      campaign_id,
-      influencer_id,
-      status: 'pending'
-    }, { transaction: t });
+    const task = await Task.create(
+      {
+        campaign_id,
+        influencer_id: userId,
+        status: 'pending',
+        submission_url,
+        submitted_at: new Date(),
+      },
+      { transaction: t }
+    );
 
     await t.commit();
 
@@ -72,24 +88,36 @@ const createTask = async (request, h) => {
         {
           model: Campaign,
           as: 'campaign',
-          attributes: ['id', 'campaign_name', 'campaign_type', 'budget', 'currency']
+          attributes: [
+            'id',
+            'campaign_name',
+            'campaign_type',
+            'budget',
+            'currency',
+          ],
         },
         {
           model: User,
           as: 'influencer',
           attributes: ['id', 'name', 'email'],
-          include: [{
-            model: InfluencerProfile,
-            as: 'influencerProfile'
-          }]
-        }
-      ]
+          include: [
+            {
+              model: InfluencerProfile,
+              as: 'influencerProfile',
+            },
+          ],
+        },
+      ],
     });
 
-    return successResponse(h, {
-      message: 'Task created successfully',
-      data: taskWithDetails
-    }, 201);
+    return successResponse(
+      h,
+      {
+        taskWithDetails,
+      },
+      'Task created successfully',
+      201
+    );
   } catch (error) {
     await t.rollback();
     console.error('Error creating task:', error);
@@ -107,7 +135,7 @@ const getAllTasks = async (request, h) => {
       sort_order = 'DESC',
       status,
       campaign_id,
-      influencer_id
+      influencer_id,
     } = request.query;
 
     const offset = (page - 1) * limit;
@@ -123,21 +151,29 @@ const getAllTasks = async (request, h) => {
         {
           model: Campaign,
           as: 'campaign',
-          attributes: ['id', 'campaign_name', 'campaign_type', 'budget', 'currency']
+          attributes: [
+            'id',
+            'campaign_name',
+            'campaign_type',
+            'budget',
+            'currency',
+          ],
         },
         {
           model: User,
           as: 'influencer',
           attributes: ['id', 'name', 'email'],
-          include: [{
-            model: InfluencerProfile,
-            as: 'influencerProfile'
-          }]
-        }
+          include: [
+            {
+              model: InfluencerProfile,
+              as: 'influencerProfile',
+            },
+          ],
+        },
       ],
       order: [[sort_by, sort_order]],
       limit: parseInt(limit),
-      offset: parseInt(offset)
+      offset: parseInt(offset),
     });
 
     return successResponse(h, {
@@ -147,8 +183,8 @@ const getAllTasks = async (request, h) => {
         current_page: parseInt(page),
         per_page: parseInt(limit),
         total: count,
-        total_pages: Math.ceil(count / limit)
-      }
+        total_pages: Math.ceil(count / limit),
+      },
     });
   } catch (error) {
     console.error('Error getting tasks:', error);
@@ -166,18 +202,29 @@ const getTaskById = async (request, h) => {
         {
           model: Campaign,
           as: 'campaign',
-          attributes: ['id', 'campaign_name', 'campaign_type', 'budget', 'currency', 'content_dos', 'content_donts', 'key_message']
+          attributes: [
+            'id',
+            'campaign_name',
+            'campaign_type',
+            'budget',
+            'currency',
+            'content_dos',
+            'content_donts',
+            'key_message',
+          ],
         },
         {
           model: User,
           as: 'influencer',
           attributes: ['id', 'name', 'email'],
-          include: [{
-            model: InfluencerProfile,
-            as: 'influencerProfile'
-          }]
-        }
-      ]
+          include: [
+            {
+              model: InfluencerProfile,
+              as: 'influencerProfile',
+            },
+          ],
+        },
+      ],
     });
 
     if (!task) {
@@ -186,7 +233,7 @@ const getTaskById = async (request, h) => {
 
     return successResponse(h, {
       message: 'Task retrieved successfully',
-      data: task
+      data: task,
     });
   } catch (error) {
     console.error('Error getting task:', error);
@@ -223,11 +270,14 @@ const submitTask = async (request, h) => {
     }
 
     // Update task with submission
-    await task.update({
-      submission_url,
-      submitted_at: new Date(),
-      status: 'pending' // Reset to pending for review
-    }, { transaction: t });
+    await task.update(
+      {
+        submission_url,
+        submitted_at: new Date(),
+        status: 'pending', // Reset to pending for review
+      },
+      { transaction: t }
+    );
 
     await t.commit();
 
@@ -236,14 +286,14 @@ const submitTask = async (request, h) => {
         {
           model: Campaign,
           as: 'campaign',
-          attributes: ['id', 'campaign_name', 'campaign_type']
-        }
-      ]
+          attributes: ['id', 'campaign_name', 'campaign_type'],
+        },
+      ],
     });
 
     return successResponse(h, {
       message: 'Task submitted successfully',
-      data: updatedTask
+      data: updatedTask,
     });
   } catch (error) {
     await t.rollback();
@@ -268,11 +318,13 @@ const updateTaskStatus = async (request, h) => {
     }
 
     const task = await Task.findByPk(id, {
-      include: [{
-        model: Campaign,
-        as: 'campaign'
-      }],
-      transaction: t
+      include: [
+        {
+          model: Campaign,
+          as: 'campaign',
+        },
+      ],
+      transaction: t,
     });
 
     if (!task) {
@@ -294,19 +346,19 @@ const updateTaskStatus = async (request, h) => {
         {
           model: Campaign,
           as: 'campaign',
-          attributes: ['id', 'campaign_name', 'campaign_type']
+          attributes: ['id', 'campaign_name', 'campaign_type'],
         },
         {
           model: User,
           as: 'influencer',
-          attributes: ['id', 'name', 'email']
-        }
-      ]
+          attributes: ['id', 'name', 'email'],
+        },
+      ],
     });
 
     return successResponse(h, {
       message: 'Task status updated successfully',
-      data: updatedTask
+      data: updatedTask,
     });
   } catch (error) {
     await t.rollback();
@@ -325,7 +377,7 @@ const getCampaignTasks = async (request, h) => {
     sort_by = 'created_at',
     sort_order = 'DESC',
     status,
-    influencer_id
+    influencer_id,
   } = request.query;
 
   try {
@@ -356,15 +408,17 @@ const getCampaignTasks = async (request, h) => {
           model: User,
           as: 'influencer',
           attributes: ['id', 'name', 'email'],
-          include: [{
-            model: InfluencerProfile,
-            as: 'influencerProfile'
-          }]
-        }
+          include: [
+            {
+              model: InfluencerProfile,
+              as: 'influencerProfile',
+            },
+          ],
+        },
       ],
       order: [[sort_by, sort_order]],
       limit: parseInt(limit),
-      offset: parseInt(offset)
+      offset: parseInt(offset),
     });
 
     return successResponse(h, {
@@ -374,8 +428,8 @@ const getCampaignTasks = async (request, h) => {
         current_page: parseInt(page),
         per_page: parseInt(limit),
         total: count,
-        total_pages: Math.ceil(count / limit)
-      }
+        total_pages: Math.ceil(count / limit),
+      },
     });
   } catch (error) {
     console.error('Error getting campaign tasks:', error);
@@ -391,7 +445,7 @@ const getMyTasks = async (request, h) => {
     limit = 10,
     sort_by = 'created_at',
     sort_order = 'DESC',
-    status
+    status,
   } = request.query;
 
   try {
@@ -411,12 +465,23 @@ const getMyTasks = async (request, h) => {
         {
           model: Campaign,
           as: 'campaign',
-          attributes: ['id', 'campaign_name', 'campaign_type', 'budget', 'currency', 'start_date', 'end_date', 'content_dos', 'content_donts', 'key_message']
-        }
+          attributes: [
+            'id',
+            'campaign_name',
+            'campaign_type',
+            'budget',
+            'currency',
+            'start_date',
+            'end_date',
+            'content_dos',
+            'content_donts',
+            'key_message',
+          ],
+        },
       ],
       order: [[sort_by, sort_order]],
       limit: parseInt(limit),
-      offset: parseInt(offset)
+      offset: parseInt(offset),
     });
 
     return successResponse(h, {
@@ -426,8 +491,8 @@ const getMyTasks = async (request, h) => {
         current_page: parseInt(page),
         per_page: parseInt(limit),
         total: count,
-        total_pages: Math.ceil(count / limit)
-      }
+        total_pages: Math.ceil(count / limit),
+      },
     });
   } catch (error) {
     console.error('Error getting my tasks:', error);
@@ -444,11 +509,13 @@ const updateTask = async (request, h) => {
   const t = await sequelize.transaction();
   try {
     const task = await Task.findByPk(id, {
-      include: [{
-        model: Campaign,
-        as: 'campaign'
-      }],
-      transaction: t
+      include: [
+        {
+          model: Campaign,
+          as: 'campaign',
+        },
+      ],
+      transaction: t,
     });
 
     if (!task) {
@@ -466,7 +533,7 @@ const updateTask = async (request, h) => {
         return Boom.forbidden('You can only update your own tasks');
       }
       // Only allow submission_url updates for influencers
-      if (Object.keys(updateData).some(key => key !== 'submission_url')) {
+      if (Object.keys(updateData).some((key) => key !== 'submission_url')) {
         await t.rollback();
         return Boom.forbidden('Influencers can only update submission_url');
       }
@@ -477,10 +544,12 @@ const updateTask = async (request, h) => {
       // Brand can only update tasks for their own campaigns and only status
       if (task.campaign.user_id !== userId) {
         await t.rollback();
-        return Boom.forbidden('You can only update tasks for your own campaigns');
+        return Boom.forbidden(
+          'You can only update tasks for your own campaigns'
+        );
       }
       // Only allow status updates for brands
-      if (Object.keys(updateData).some(key => key !== 'status')) {
+      if (Object.keys(updateData).some((key) => key !== 'status')) {
         await t.rollback();
         return Boom.forbidden('Brands can only update task status');
       }
@@ -497,19 +566,19 @@ const updateTask = async (request, h) => {
         {
           model: Campaign,
           as: 'campaign',
-          attributes: ['id', 'campaign_name', 'campaign_type']
+          attributes: ['id', 'campaign_name', 'campaign_type'],
         },
         {
           model: User,
           as: 'influencer',
-          attributes: ['id', 'name', 'email']
-        }
-      ]
+          attributes: ['id', 'name', 'email'],
+        },
+      ],
     });
 
     return successResponse(h, {
       message: 'Task updated successfully',
-      data: updatedTask
+      data: updatedTask,
     });
   } catch (error) {
     await t.rollback();
@@ -533,11 +602,13 @@ const deleteTask = async (request, h) => {
     }
 
     const task = await Task.findByPk(id, {
-      include: [{
-        model: Campaign,
-        as: 'campaign'
-      }],
-      transaction: t
+      include: [
+        {
+          model: Campaign,
+          as: 'campaign',
+        },
+      ],
+      transaction: t,
     });
 
     if (!task) {
@@ -555,7 +626,7 @@ const deleteTask = async (request, h) => {
     await t.commit();
 
     return successResponse(h, {
-      message: 'Task deleted successfully'
+      message: 'Task deleted successfully',
     });
   } catch (error) {
     await t.rollback();
@@ -573,5 +644,5 @@ module.exports = {
   getCampaignTasks,
   getMyTasks,
   updateTask,
-  deleteTask
+  deleteTask,
 };
