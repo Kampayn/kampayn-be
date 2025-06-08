@@ -289,10 +289,13 @@ const updateApplicationStatus = async (request, h) => {
       ],
     });
 
-    return successResponse(h, {
-      message: 'Application status updated successfully',
-      data: updatedApplication,
-    });
+    return successResponse(
+      h,
+      {
+        updatedApplication,
+      },
+      'Application status updated successfully'
+    );
   } catch (error) {
     await t.rollback();
     console.error('Error updating application status:', error);
@@ -334,25 +337,26 @@ const getCampaignApplications = async (request, h) => {
     const whereClause = { campaign_id };
     if (status) whereClause.status = status;
 
-    const { count, rows: application } = await InfluencerApplication.findAndCountAll({
-      where: whereClause,
-      include: [
-        {
-          model: User,
-          as: 'influencer',
-          attributes: ['id', 'name', 'email'],
-          include: [
-            {
-              model: InfluencerProfile,
-              as: 'influencerProfile',
-            },
-          ],
-        },
-      ],
-      order: [[sort_by, sort_order]],
-      limit: parseInt(limit),
-      offset: parseInt(offset),
-    });
+    const { count, rows: application } =
+      await InfluencerApplication.findAndCountAll({
+        where: whereClause,
+        include: [
+          {
+            model: User,
+            as: 'influencer',
+            attributes: ['id', 'name', 'email'],
+            include: [
+              {
+                model: InfluencerProfile,
+                as: 'influencerProfile',
+              },
+            ],
+          },
+        ],
+        order: [[sort_by, sort_order]],
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+      });
 
     // return successResponse(h, {
     //   message: 'Campaign applications retrieved successfully',
