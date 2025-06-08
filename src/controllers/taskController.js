@@ -11,18 +11,18 @@ const {
 const { successResponse } = require('../utils/responseHelper');
 const { Op } = require('sequelize');
 
-// Create Task (Influencer only, for accepted influencers)
-const createTask = async (request, h) => {
+// Submit or Create Task (Influencer only, for accepted influencers)
+const submitOrCreateTask = async (request, h) => {
   const userId = request.auth.credentials.user.id;
   const { campaign_id, submission_url } = request.payload;
 
   const t = await sequelize.transaction();
   try {
-    // Verify user is a influencer
+    // Verify user is an influencer
     const user = await User.findByPk(userId, { transaction: t });
     if (!user || user.role !== 'influencer') {
       await t.rollback();
-      return Boom.forbidden('Only brands can create tasks');
+      return Boom.forbidden('Only influencers can submit tasks');
     }
 
     // Check if campaign exists and is active
@@ -63,23 +63,34 @@ const createTask = async (request, h) => {
       transaction: t,
     });
 
-    if (existingTask) {
-      await t.rollback();
-      return Boom.conflict(
-        'Task already exists for this influencer and campaign'
-      );
-    }
+    let task;
+    let isNewTask = false;
 
-    const task = await Task.create(
-      {
-        campaign_id,
-        influencer_id: userId,
-        status: 'pending',
-        submission_url,
-        submitted_at: new Date(),
-      },
-      { transaction: t }
-    );
+    if (existingTask) {
+      // Update existing task
+      await existingTask.update(
+        {
+          submission_url,
+          submitted_at: new Date(),
+          status: 'pending', // Reset to pending for review
+        },
+        { transaction: t }
+      );
+      task = existingTask;
+    } else {
+      // Create new task
+      task = await Task.create(
+        {
+          campaign_id,
+          influencer_id: userId,
+          status: 'pending',
+          submission_url,
+          submitted_at: new Date(),
+        },
+        { transaction: t }
+      );
+      isNewTask = true;
+    }
 
     await t.commit();
 
@@ -110,18 +121,22 @@ const createTask = async (request, h) => {
       ],
     });
 
+    const message = isNewTask ? 'Task created and submitted successfully' : 'Task updated and resubmitted successfully';
+    const statusCode = isNewTask ? 201 : 200;
+
     return successResponse(
       h,
       {
-        taskWithDetails,
+        task: taskWithDetails,
+        isNewTask,
       },
-      'Task created successfully',
-      201
+      message,
+      statusCode
     );
   } catch (error) {
     await t.rollback();
-    console.error('Error creating task:', error);
-    return Boom.internal('Failed to create task');
+    console.error('Error submitting/creating task:', error);
+    return Boom.internal('Failed to submit/create task');
   }
 };
 
@@ -241,66 +256,7 @@ const getTaskById = async (request, h) => {
   }
 };
 
-// Submit Task (Influencer only)
-const submitTask = async (request, h) => {
-  const userId = request.auth.credentials.user.id;
-  const { id } = request.params;
-  const { submission_url } = request.payload;
 
-  const t = await sequelize.transaction();
-  try {
-    // Verify user is an influencer
-    const user = await User.findByPk(userId, { transaction: t });
-    if (!user || user.role !== 'influencer') {
-      await t.rollback();
-      return Boom.forbidden('Only influencers can submit tasks');
-    }
-
-    const task = await Task.findByPk(id, { transaction: t });
-
-    if (!task) {
-      await t.rollback();
-      return Boom.notFound('Task not found');
-    }
-
-    // Check if user owns the task
-    if (task.influencer_id !== userId) {
-      await t.rollback();
-      return Boom.forbidden('You can only submit your own tasks');
-    }
-
-    // Update task with submission
-    await task.update(
-      {
-        submission_url,
-        submitted_at: new Date(),
-        status: 'pending', // Reset to pending for review
-      },
-      { transaction: t }
-    );
-
-    await t.commit();
-
-    const updatedTask = await Task.findByPk(id, {
-      include: [
-        {
-          model: Campaign,
-          as: 'campaign',
-          attributes: ['id', 'campaign_name', 'campaign_type'],
-        },
-      ],
-    });
-
-    return successResponse(h, {
-      message: 'Task submitted successfully',
-      data: updatedTask,
-    });
-  } catch (error) {
-    await t.rollback();
-    console.error('Error submitting task:', error);
-    return Boom.internal('Failed to submit task');
-  }
-};
 
 // Update Task Status (Brand only)
 const updateTaskStatus = async (request, h) => {
@@ -636,10 +592,9 @@ const deleteTask = async (request, h) => {
 };
 
 module.exports = {
-  createTask,
+  submitOrCreateTask,
   getAllTasks,
   getTaskById,
-  submitTask,
   updateTaskStatus,
   getCampaignTasks,
   getMyTasks,

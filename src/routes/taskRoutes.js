@@ -1,9 +1,8 @@
 'use strict';
 const taskController = require('../controllers/taskController');
 const {
-  createTaskPayload,
+  submitOrCreateTaskPayload,
   updateTaskPayload,
-  submitTaskPayload,
   updateTaskStatusPayload,
   taskQueryParams,
   taskByIdParams,
@@ -12,15 +11,15 @@ const {
 } = require('../validations/taskValidation');
 
 module.exports = [
-  // Create Task (Brand only, for accepted influencers)
+  // Submit or Create Task (Influencer only, for accepted influencers)
   {
     method: 'POST',
-    path: '/api/v1/tasks',
-    handler: taskController.createTask,
+    path: '/api/v1/tasks/submit',
+    handler: taskController.submitOrCreateTask,
     options: {
       auth: 'jwt_access',
       validate: {
-        payload: createTaskPayload
+        payload: submitOrCreateTaskPayload
       }
     }
   },
@@ -65,19 +64,7 @@ module.exports = [
     }
   },
 
-  // Submit Task (Influencer only)
-  {
-    method: 'POST',
-    path: '/api/v1/tasks/{id}/submit',
-    handler: taskController.submitTask,
-    options: {
-      auth: 'jwt_access',
-      validate: {
-        params: taskByIdParams,
-        payload: submitTaskPayload
-      }
-    }
-  },
+
 
   // Update Task Status (Brand only)
   {

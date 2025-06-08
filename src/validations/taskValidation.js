@@ -1,19 +1,15 @@
 'use strict';
 const Joi = require('joi');
 
-const createTaskPayload = Joi.object({
+const submitOrCreateTaskPayload = Joi.object({
   campaign_id: Joi.string().uuid().required(),
-  submission_url: Joi.string().uri().allow(''),
+  submission_url: Joi.string().uri().required(),
 });
 
 const updateTaskPayload = Joi.object({
   submission_url: Joi.string().uri().allow(''),
   status: Joi.string().valid('pending', 'approved', 'rejected')
 }).min(1);
-
-const submitTaskPayload = Joi.object({
-  submission_url: Joi.string().uri().required()
-});
 
 const updateTaskStatusPayload = Joi.object({
   status: Joi.string().valid('pending', 'approved', 'rejected').required()
@@ -47,9 +43,8 @@ const campaignTasksQuery = Joi.object({
 });
 
 module.exports = {
-  createTaskPayload,
+  submitOrCreateTaskPayload,
   updateTaskPayload,
-  submitTaskPayload,
   updateTaskStatusPayload,
   taskQueryParams,
   taskByIdParams,
