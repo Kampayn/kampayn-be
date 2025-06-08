@@ -1,5 +1,5 @@
 const Boom = require('@hapi/boom');
-const { Campaign, User, BrandProfile, sequelize } = require('../db/models');
+const { Campaign, User, BrandProfile, Task, InfluencerApplication, sequelize } = require('../db/models');
 const { successResponse } = require('../utils/responseHelper');
 const { Op } = require('sequelize');
 
@@ -176,12 +176,38 @@ const getCampaignById = async (request, h) => {
     const { for_role } = request.query; // 'influencer' or 'brand'
 
     const campaign = await Campaign.findByPk(id, {
-      include: [{
-        model: User,
-        as: 'brandUser',
-        attributes: ['id', 'name', 'email'],
-        include: [{ model: BrandProfile, as: 'brandProfile' }]
-      }]
+      include: [
+        {
+          model: User,
+          as: 'brandUser',
+          attributes: ['id', 'name', 'email'],
+          include: [{ model: BrandProfile, as: 'brandProfile' }]
+        },
+        {
+          model: Task,
+          as: 'tasks',
+          attributes: ['id', 'influencer_id', 'status', 'submission_url', 'submitted_at', 'created_at', 'updated_at'],
+          include: [
+            {
+              model: User,
+              as: 'influencer',
+              attributes: ['id', 'name', 'email']
+            }
+          ]
+        },
+        {
+          model: InfluencerApplication,
+          as: 'applications',
+          attributes: ['id', 'influencer_id', 'status', 'applied_at'],
+          include: [
+            {
+              model: User,
+              as: 'influencer',
+              attributes: ['id', 'name', 'email']
+            }
+          ]
+        }
+      ]
     });
 
     if (!campaign) {
@@ -192,7 +218,10 @@ const getCampaignById = async (request, h) => {
     let responseData = campaign.toJSON();
 
     if (for_role === 'influencer' || (userRole === 'influencer' && !for_role)) {
-      // For influencers, hide sensitive brand information
+      // For influencers, hide sensitive brand information but include their task status
+      const influencerTask = campaign.tasks?.find(task => task.influencer_id === userId);
+      const influencerApplication = campaign.applications?.find(app => app.influencer_id === userId);
+      
       responseData = {
         id: campaign.id,
         campaign_name: campaign.campaign_name,
@@ -217,7 +246,22 @@ const getCampaignById = async (request, h) => {
             company: campaign.brandUser.brandProfile?.company,
             category: campaign.brandUser.brandProfile?.category
           }
-        }
+        },
+        // Include influencer's application status
+        my_application: influencerApplication ? {
+          id: influencerApplication.id,
+          status: influencerApplication.status,
+          applied_at: influencerApplication.applied_at
+        } : null,
+        // Include influencer's task status if they have one
+        my_task: influencerTask ? {
+          id: influencerTask.id,
+          status: influencerTask.status,
+          submission_url: influencerTask.submission_url,
+          submitted_at: influencerTask.submitted_at,
+          created_at: influencerTask.created_at,
+          updated_at: influencerTask.updated_at
+        } : null
       };
     } else if (for_role === 'brand' || (userRole === 'brand' && !for_role)) {
       // For brands, show all information including budget and payment details
