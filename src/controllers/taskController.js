@@ -357,7 +357,7 @@ const getCampaignTasks = async (request, h) => {
     if (status) whereClause.status = status;
     if (influencer_id) whereClause.influencer_id = influencer_id;
 
-    const { count, rows } = await Task.findAndCountAll({
+    const { count, rows: task } = await Task.findAndCountAll({
       where: whereClause,
       include: [
         {
@@ -377,16 +377,23 @@ const getCampaignTasks = async (request, h) => {
       offset: parseInt(offset),
     });
 
-    return successResponse(h, {
-      message: 'Campaign tasks retrieved successfully',
-      data: rows,
-      pagination: {
-        current_page: parseInt(page),
-        per_page: parseInt(limit),
-        total: count,
-        total_pages: Math.ceil(count / limit),
+    const totalPages = Math.ceil(count / limit);
+
+    return successResponse(
+      h,
+      {
+        task,
+        pagination: {
+          current_page: parseInt(page),
+          total_pages: totalPages,
+          total_items: count,
+          items_per_page: parseInt(limit),
+          has_next: page < totalPages,
+          has_prev: page > 1,
+        },
       },
-    });
+      'Campaign tasks retrieved successfully'
+    );
   } catch (error) {
     console.error('Error getting campaign tasks:', error);
     return Boom.internal('Failed to retrieve campaign tasks');
