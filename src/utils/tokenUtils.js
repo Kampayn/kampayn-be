@@ -1,4 +1,10 @@
 const Jwt = require('@hapi/jwt');
+let JwtService;
+
+const initializeJwtService = (jwt) => {
+  JwtService = jwt;
+};
+
 const {
   accessTokenSecret,
   refreshTokenSecret,
@@ -7,7 +13,7 @@ const {
 } = require('../config/jwt');
 
 const generateAccessToken = (payload) => {
-  return Jwt.token.generate(
+  return JwtService.token.generate(
     { ...payload, aud: 'urn:audience:access', iss: 'urn:issuer:platform' },
     { key: accessTokenSecret, algorithm: 'HS256' },
     { ttlSec: parseTimeToSeconds(accessTokenTtl) }
@@ -15,7 +21,7 @@ const generateAccessToken = (payload) => {
 };
 
 const generateRefreshToken = (payload) => {
-  return Jwt.token.generate(
+  return JwtService.token.generate(
     { ...payload, aud: 'urn:audience:refresh', iss: 'urn:issuer:platform' },
     { key: refreshTokenSecret, algorithm: 'HS256' },
     { ttlSec: parseTimeToSeconds(refreshTokenTtl) }
@@ -48,11 +54,11 @@ const getExpiryDate = (ttlString) => {
 
 const verifyToken = (token, secret) => {
   try {
-    const decoded = Jwt.token.decode(token); // Cek struktur dulu
+    const decoded = JwtService.token.decode(token); // Cek struktur dulu
     if (!decoded || !decoded.decoded || !decoded.decoded.payload) {
       throw new Error('Invalid token structure');
     }
-    Jwt.token.verify(decoded, secret); // Verifikasi signature dan expiry
+    JwtService.token.verify(decoded, secret); // Verifikasi signature dan expiry
     return { valid: true, expired: false, payload: decoded.decoded.payload };
   } catch (err) {
     if (err.message.includes('expired')) {
@@ -63,6 +69,7 @@ const verifyToken = (token, secret) => {
 };
 
 module.exports = {
+  initializeJwtService,
   generateAccessToken,
   generateRefreshToken,
   verifyToken,

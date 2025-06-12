@@ -8,6 +8,7 @@ const serverConfig = require('./config/server');
 const allRoutes = require('./routes');
 const { sequelize } = require('./db/models'); // For DB connection test
 const { registerAuthStrategy } = require('./middlewares/authenticate');
+const { initializeJwtService } = require('./utils/tokenUtils');
 const { initializeFirebase } = require('./config/firebase');
 
 // Initialize Firebase Admin SDK
@@ -44,6 +45,7 @@ const init = async () => {
 
   // Register JWT plugin
   await server.register(HapiJwt);
+  initializeJwtService(HapiJwt);
 
   // Define JWT authentication strategy
   registerAuthStrategy(server);
