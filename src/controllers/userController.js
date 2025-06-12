@@ -135,7 +135,35 @@ const completeProfile = async (request, h) => {
   }
 };
 
+const getUserProfileById = async (request, h) => {
+  const { userId } = request.params;
+  try {
+    const user = await User.findByPk(userId, {
+      attributes: { exclude: ['password_hash', 'deleted_at'] },
+      include: [
+        { model: BrandProfile, as: 'brandProfile' },
+        { model: InfluencerProfile, as: 'influencerProfile' },
+      ],
+    });
+
+    if (!user) {
+      return Boom.notFound('User not found');
+    }
+    return successResponse(
+      h,
+      {
+        user: user,
+      },
+      'Profile retrieved successfully'
+    );
+  } catch (error) {
+    console.error('Get user profile by ID error:', error);
+    return Boom.badImplementation('Failed to retrieve user profile');
+  }
+};
+
 module.exports = {
   getMyProfile,
   completeProfile,
+  getUserProfileById,
 };

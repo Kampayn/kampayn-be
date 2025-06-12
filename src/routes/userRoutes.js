@@ -11,6 +11,14 @@ module.exports = [
     },
   },
   {
+    method: 'GET',
+    path: '/api/v1/users/{userId}',
+    handler: userController.getUserProfileById,
+    options: {
+      auth: 'jwt_access', // Requires JWT authentication
+    },
+  },
+  {
     method: 'POST', // atau PUT
     path: '/api/v1/users/complete-profile',
     handler: userController.completeProfile,
