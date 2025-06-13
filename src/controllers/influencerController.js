@@ -45,16 +45,16 @@ const scrapeInfluencerData = (username) => {
         if (accountInfo) {
           // Return only the required fields
           const simplifiedData = {
-            Followers: accountInfo.Followers,
-            'Engagement Rate': parseFloat(
+            followers: accountInfo.Followers,
+            'engagement_rate': parseFloat(
               accountInfo['Engagement Rate'].replace('%', '')
             ),
-            'Average Likes': parseFloat(accountInfo['Average Likes']),
-            'Average Comments': parseFloat(accountInfo['Average Comments']),
-            'Is Professional Account':
+            'average_likes': parseFloat(accountInfo['Average Likes']),
+            'average_comments': parseFloat(accountInfo['Average Comments']),
+            'is_professional_account':
               accountInfo['Is Professional Account'] === 'Yes',
-            'Is Verified': accountInfo['Is Verified'] === 'Yes',
-            Category: accountInfo.Category,
+            'is_verified': accountInfo['Is Verified'] === 'Yes',
+            category: accountInfo.Category,
           };
           resolve(simplifiedData);
         } else {
