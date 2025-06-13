@@ -36,8 +36,15 @@ const getMyProfile = async (request, h) => {
 
 const completeProfile = async (request, h) => {
   const userId = request.auth.credentials.user.id;
-  const { role, category, photo_url, company, instagram_username } =
-    request.payload;
+  const { role, category, photo_url, company, instagram_username,
+    instagram_followers, instagram_avg_likes, instagram_avg_comments,
+    instagram_engagement_rate } = request.payload;
+
+  // Parse numeric values from payload
+  const parsedInstagramFollowers = instagram_followers ? parseInt(instagram_followers, 10) : null;
+  const parsedInstagramAvgLikes = instagram_avg_likes ? Math.round(parseFloat(instagram_avg_likes)) : null;
+  const parsedInstagramAvgComments = instagram_avg_comments ? Math.round(parseFloat(instagram_avg_comments)) : null;
+  const parsedInstagramEngagementRate = instagram_engagement_rate ? parseFloat(instagram_engagement_rate) : null;
 
   const t = await sequelize.transaction();
   try {
@@ -94,6 +101,10 @@ const completeProfile = async (request, h) => {
           ? category
           : [category];
         influencerProfile.photo_url = photo_url;
+        influencerProfile.instagram_followers = parsedInstagramFollowers;
+        influencerProfile.instagram_avg_likes = parsedInstagramAvgLikes;
+        influencerProfile.instagram_avg_comments = parsedInstagramAvgComments;
+        influencerProfile.instagram_engagement_rate = parsedInstagramEngagementRate;
         // ...
         await influencerProfile.save({ transaction: t });
       } else {
@@ -103,7 +114,10 @@ const completeProfile = async (request, h) => {
             instagram_username: instagram_username, // dan field lain
             categories: Array.isArray(category) ? category : [category],
             photo_url: photo_url,
-            // ...
+            instagram_followers: parsedInstagramFollowers,
+            instagram_avg_likes: parsedInstagramAvgLikes,
+            instagram_avg_comments: parsedInstagramAvgComments,
+            instagram_engagement_rate: parsedInstagramEngagementRate,
           },
           { transaction: t }
         );
